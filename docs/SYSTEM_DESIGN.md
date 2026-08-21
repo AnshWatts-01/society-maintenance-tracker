@@ -35,4 +35,4 @@ That log is the retry boundary. The hourly sweep re-sends `FAILED` rows with att
 Broadcasts fan out per resident with one log row each, so a bad address never blocks the rest. Email goes via Resend's HTTP API through native `fetch` — no SDK for one POST. Interpolated user text is HTML-escaped, since email bodies get none of JSX's automatic escaping.
 
 ---
-*Word count: 794 (limit: 800)*
+*Word count: 795 (limit: 800)*
