@@ -1,0 +1,173 @@
+// Society Maintenance Tracker — Database Schema
+// See docs/SYSTEM_DESIGN.md for the reasoning behind the modeling decisions below.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ── Enums ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  RESIDENT
+  ADMIN
+}
+
+enum ComplaintCategory {
+  PLUMBING
+  ELECTRICAL
+  CARPENTRY
+  COMMON_AREA
+  HVAC
+  SECURITY
+  OTHER
+}
+
+enum ComplaintStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum PriorityLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum NotificationType {
+  STATUS_CHANGE
+  IMPORTANT_NOTICE
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+// ── Models ───────────────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role     @default(RESIDENT)
+  flatNumber   String?
+  phone        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  complaints     Complaint[]               @relation("ResidentComplaints")
+  statusChanges  ComplaintStatusHistory[]   @relation("ActorHistory")
+  notices        Notice[]                  @relation("AuthoredNotices")
+
+  @@index([role])
+}
+
+model Complaint {
+  id           String            @id @default(cuid())
+  residentId   String
+  resident     User              @relation("ResidentComplaints", fields: [residentId], references: [id], onDelete: Cascade)
+
+  category     ComplaintCategory
+  description  String
+  photoUrl     String?
+  photoPath    String?
+
+  status       ComplaintStatus   @default(OPEN)
+  priority     PriorityLevel     @default(MEDIUM)
+
+  // Persisted, indexed half of the hybrid overdue engine. Kept fresh by the
+  // scheduled sweep (see /api/cron/sweep) AND by an inline re-sweep triggered
+  // on every admin list/dashboard read — see lib/services/overdueService.ts.
+  isOverdue    Boolean           @default(false)
+  overdueSince DateTime?
+
+  resolvedAt   DateTime?
+
+  // Optimistic concurrency token: every status/priority mutation checks and
+  // increments this so two concurrent admin updates cannot silently clobber
+  // one another (see lib/services/complaintService.ts).
+  version      Int               @default(0)
+
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  history      ComplaintStatusHistory[]
+
+  @@index([status, createdAt])
+  @@index([category])
+  @@index([isOverdue, createdAt])
+  @@index([residentId])
+  @@index([priority])
+}
+
+// Append-only audit ledger. Never updated or deleted — every row is one
+// atomic, immutable fact about a status transition.
+model ComplaintStatusHistory {
+  id             String           @id @default(cuid())
+  complaintId    String
+  complaint      Complaint        @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+
+  actorId        String
+  actor          User             @relation("ActorHistory", fields: [actorId], references: [id])
+
+  previousStatus ComplaintStatus?
+  newStatus      ComplaintStatus
+  note           String?
+
+  createdAt      DateTime         @default(now())
+
+  @@index([complaintId, createdAt])
+}
+
+model Notice {
+  id          String   @id @default(cuid())
+  title       String
+  body        String
+  isImportant Boolean  @default(false)
+
+  authorId    String
+  author      User     @relation("AuthoredNotices", fields: [authorId], references: [id])
+
+  createdAt   DateTime @default(now())
+
+  @@index([isImportant, createdAt])
+}
+
+// Dynamic system configuration (e.g. the overdue SLA threshold) without a
+// redeploy. Simple key/value store, deliberately not over-modeled.
+model SystemSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+// Durable record of every notification attempt, decoupling "an event
+// happened" from "an email was successfully delivered" and giving the
+// scheduled sweep a retry boundary for transient provider failures.
+model NotificationLog {
+  id                  String              @id @default(cuid())
+  type                NotificationType
+  recipientEmail      String
+  subject             String
+  // Full rendered body, persisted so a scheduled retry can resend the exact
+  // original email rather than a placeholder.
+  bodyHtml            String
+  status              NotificationStatus  @default(PENDING)
+  error               String?
+  attempts            Int                 @default(0)
+  relatedComplaintId  String?
+  relatedNoticeId     String?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  @@index([status, attempts])
+}
