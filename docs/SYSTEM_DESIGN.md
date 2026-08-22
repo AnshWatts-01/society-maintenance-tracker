@@ -16,7 +16,7 @@ The threshold lives in `SystemSetting` (key `overdue_threshold_days`), edited fr
 
 Detection is **hybrid**. Complaints carry a persisted, indexed `isOverdue` boolean, reconciled by `resweepOverdueFlags()`: two set-based `updateMany` statements — one flags non-resolved complaints older than `now − N days`, the other unflags rows that resolved or fell back inside the window after a threshold change. Both are idempotent and driven by the `[status, createdAt]` and `[isOverdue, createdAt]` indexes, so the sweep costs O(rows actually changing), not O(table).
 
-The sweep runs hourly via Vercel Cron (`/api/cron/sweep`, bearer-secret authorized) and inline before every admin list or dashboard read. The scheduled pass keeps flags fresh for anything reading the column directly; the inline pass guarantees correctness even if cron is delayed or the threshold changed seconds ago. Whichever runs first wins; the other is a cheap no-op.
+The sweep runs on Vercel Cron (`/api/cron/sweep`, bearer-secret authorized) and inline before every admin list or dashboard read. The scheduled pass keeps flags fresh for anything reading the column directly; the inline pass guarantees correctness even if cron is delayed or the threshold changed seconds ago. Whichever runs first wins; the other is a cheap no-op.
 
 Storing the flag rather than computing `createdAt < now − N` per query is what lets overdue tickets **pin to the top**: `ORDER BY isOverdue DESC, priority DESC, createdAt ASC` is index-backed and evaluated entirely in Postgres, so ordering holds across page boundaries, not just within a page. Priority sorts natively because Postgres orders an enum by declaration order, and `PriorityLevel` is declared `LOW, MEDIUM, HIGH`.
 
@@ -30,9 +30,9 @@ With Supabase Storage configured, uploads go direct-to-cloud instead: after the 
 
 A domain event and its email are deliberately decoupled. The transaction commits first, then the dispatch is scheduled with Next's `after()` — not a bare un-awaited promise, which a serverless platform silently kills the moment the response flushes. `after()` keeps the invocation alive for the send while still returning immediately. The dispatcher writes a `NotificationLog` row — recipient, subject, **fully rendered body**, status — *before* calling the provider; success marks it `SENT`, failure marks it `FAILED` with the error and an attempt count.
 
-That log is the retry boundary. The hourly sweep re-sends `FAILED` rows with attempts below `NOTIFICATION_MAX_ATTEMPTS` (5), plus any row still `PENDING` past a staleness window — a row is only left `PENDING` if the process died mid-send, so those are orphans, not in-flight work. Persisting the rendered body means a retry resends the original email, not a reconstruction.
+That log is the retry boundary. The scheduled sweep re-sends `FAILED` rows with attempts below `NOTIFICATION_MAX_ATTEMPTS` (5), plus any row still `PENDING` past a staleness window — a row is only left `PENDING` if the process died mid-send, so those are orphans, not in-flight work. Persisting the rendered body means a retry resends the original email, not a reconstruction.
 
 Broadcasts fan out per resident with one log row each, so a bad address never blocks the rest. Email goes via Resend's HTTP API through native `fetch` — no SDK for one POST. Interpolated user text is HTML-escaped, since email bodies get none of JSX's automatic escaping.
 
 ---
-*Word count: 797 (limit: 800)*
+*Word count: 796 (limit: 800)*

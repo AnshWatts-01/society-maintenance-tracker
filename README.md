@@ -4,6 +4,17 @@ A production-grade complaint management platform for apartment societies. Reside
 
 > **System design write-up:** [`docs/SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md) (800-word limit — covers the status history model, overdue detection, photo handling, and notification flow.)
 
+## 🌐 Live Demo
+
+**https://society-maintenance-tracker-ansh01.vercel.app**
+
+| Role | Email | Password |
+|---|---|---|
+| Admin | `admin@society.test` | `Admin@12345` |
+| Resident | `asha.rao@society.test` | `Resident@123` |
+
+Or register your own resident account — registration is open.
+
 ---
 
 ## Table of Contents
@@ -54,7 +65,7 @@ Four decisions define this codebase. Each is explained in depth in [`docs/SYSTEM
 
 **2. Optimistic concurrency on every mutation.** Complaints carry a `version` token. The status update's `WHERE` clause requires the version the caller just read, so two admins racing on the same ticket produce one winner and one `409` — a lost update is structurally impossible without pessimistic locks.
 
-**3. Hybrid SLA engine.** An indexed `isOverdue` boolean is reconciled by two idempotent set-based `updateMany` statements. That sweep runs *both* from an hourly cron (`/api/cron/sweep`) *and* inline before every admin read — so flags are correct even if cron is delayed, fails, or the threshold changed a second ago. Storing the flag (rather than computing it per query) is what makes `ORDER BY isOverdue DESC` index-backed, which is what makes overdue pinning cheap.
+**3. Hybrid SLA engine.** An indexed `isOverdue` boolean is reconciled by two idempotent set-based `updateMany` statements. That sweep runs *both* from a scheduled cron (`/api/cron/sweep`) *and* inline before every admin read — so flags are correct even if cron is delayed, fails, or the threshold changed a second ago. Storing the flag (rather than computing it per query) is what makes `ORDER BY isOverdue DESC` index-backed, which is what makes overdue pinning cheap.
 
 **4. Pluggable photo storage — uploads always work.** The zero-config default stores photos first-party: the browser downscales the image on-device (canvas, ≤1600 px), `POST /api/photos` validates the actual **magic bytes** (never the declared Content-Type), and the bytes live in a dedicated `ComplaintPhoto` table served back auth-gated (uploader or admin only) via `GET /api/photos/:id`. Linking to a complaint is claimed atomically in the creation transaction, so a photo id can never attach to two complaints or to someone else's upload. Configure Supabase Storage and uploads switch to direct-to-cloud signed URLs instead — bytes bypass the app server entirely. Either way the client posts back an opaque reference, never a URL, so a resident cannot point a complaint photo at a third-party host and turn every admin who opens the ticket into a tracking beacon.
 
@@ -542,7 +553,7 @@ DATABASE_URL="<prod-pooled-url>" DIRECT_URL="<prod-direct-url>" npm run db:seed
 
 ### Step 6 — Verify the cron job
 
-[`vercel.json`](vercel.json) registers `/api/cron/sweep` hourly. After the first deploy, confirm it under **Vercel → Settings → Cron Jobs**. Trigger it manually to test:
+[`vercel.json`](vercel.json) registers `/api/cron/sweep` daily (Vercel's Hobby plan cron limit; the inline resweep keeps flags correct between runs). After the first deploy, confirm it under **Vercel → Settings → Cron Jobs**. Trigger it manually to test:
 
 ```bash
 curl -H "Authorization: Bearer $CRON_SECRET" https://<your-app>.vercel.app/api/cron/sweep
