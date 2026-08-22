@@ -43,4 +43,7 @@ next-env.d.ts
 
 # claude code local config
 .claude/
+
+# vercel cli
 .env*
+!.env.example
