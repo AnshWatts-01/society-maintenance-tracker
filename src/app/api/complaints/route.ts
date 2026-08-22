@@ -33,6 +33,9 @@ export async function POST(request: NextRequest) {
     // A photo reference is only honoured if it names an object this resident
     // actually had a signed URL minted for; the display URL is then built
     // from our own template rather than taken from the request.
+    if (body.photoPath && body.photoId) {
+      return jsonError("Provide either photoPath or photoId, not both", 422);
+    }
     if (body.photoPath) {
       if (!isStorageConfigured()) {
         return jsonError("Photo uploads are not enabled on this deployment", 503);
@@ -41,7 +44,13 @@ export async function POST(request: NextRequest) {
         return jsonError("Invalid photo reference", 422);
       }
     }
-    const photoUrl = body.photoPath ? publicObjectUrl(body.photoPath) : undefined;
+    // photoId (first-party storage) ownership + single-use are enforced
+    // atomically inside createComplaint's transaction.
+    const photoUrl = body.photoPath
+      ? publicObjectUrl(body.photoPath)
+      : body.photoId
+        ? `/api/photos/${body.photoId}`
+        : undefined;
 
     const complaint = await createComplaint({
       residentId: user.id,
@@ -49,6 +58,7 @@ export async function POST(request: NextRequest) {
       description: sanitizePlainText(body.description),
       photoUrl,
       photoPath: body.photoPath,
+      photoId: body.photoId,
     });
 
     return NextResponse.json({ complaint }, { status: 201 });

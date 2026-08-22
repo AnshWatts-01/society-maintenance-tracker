@@ -2,38 +2,192 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ───────────────────────── Estate register foundation ───────────────────── */
+
 :root {
   color-scheme: light;
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+  @apply bg-paper font-sans text-ink antialiased;
+  background-image: radial-gradient(rgba(28, 35, 64, 0.028) 1px, transparent 1px);
+  background-size: 22px 22px;
 }
 
-.card {
-  @apply rounded-2xl border border-slate-200 bg-white shadow-sm;
+::selection {
+  @apply bg-gold-300 text-ink;
 }
 
-.btn {
-  @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+@layer components {
+  /* ── Titles: Marcellus with an engraved double gold rule ────────────────── */
+  .page-title {
+    @apply font-display text-3xl tracking-wide text-ink;
+  }
+
+  .title-rule {
+    @apply mt-3 h-[5px] w-24;
+    background:
+      linear-gradient(to right, theme("colors.gold.600"), theme("colors.gold.300")) top / 100% 1px no-repeat,
+      linear-gradient(to right, theme("colors.gold.600"), theme("colors.gold.300")) bottom / 62% 1px no-repeat;
+  }
+
+  .page-sub {
+    @apply mt-3 text-sm text-ink-mute;
+  }
+
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.18em] text-gold-700;
+  }
+
+  /* ── Surfaces ───────────────────────────────────────────────────────────── */
+  .card {
+    @apply rounded-xl border border-parch bg-white shadow-card;
+  }
+
+  .card-lift {
+    @apply card transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lift;
+  }
+
+  /* ── Controls ───────────────────────────────────────────────────────────── */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold
+      transition-all duration-150 ease-out
+      focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-600
+      active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply btn bg-royal-700 text-paper shadow-sm hover:bg-royal-600 hover:shadow-lift;
+  }
+
+  .btn-secondary {
+    @apply btn border border-parch bg-white text-ink hover:border-gold-500 hover:bg-paper;
+  }
+
+  .btn-danger {
+    @apply btn bg-burgundy-600 text-white hover:bg-burgundy-700;
+  }
+
+  .input {
+    @apply w-full rounded-lg border border-parch bg-white px-3 py-2 text-sm text-ink shadow-sm
+      transition-colors duration-150 placeholder:text-ink-mute/60
+      focus:border-gold-600 focus:outline-none focus:ring-2 focus:ring-gold-300/60;
+  }
+
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-ink;
+  }
+
+  /* ── Feedback ───────────────────────────────────────────────────────────── */
+  .alert-error {
+    @apply rounded-lg border border-burgundy-100 bg-burgundy-50 px-3 py-2 text-sm text-burgundy-700;
+  }
+
+  .alert-success {
+    @apply rounded-lg border border-moss-100 bg-moss-50 px-3 py-2 text-sm text-moss-700;
+  }
+
+  .skeleton {
+    @apply relative overflow-hidden rounded-lg bg-paper-deep;
+  }
+  .skeleton::after {
+    content: "";
+    @apply absolute inset-0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.75), transparent);
+    animation: shimmer 1.6s infinite;
+  }
+
+  /* ── Links ──────────────────────────────────────────────────────────────── */
+  .link-quiet {
+    @apply relative text-sm font-medium text-royal-700 transition-colors hover:text-royal-600;
+  }
+  .link-quiet::after {
+    content: "";
+    @apply absolute -bottom-0.5 left-0 h-px w-0 bg-gold-600 transition-all duration-200;
+  }
+  .link-quiet:hover::after {
+    @apply w-full;
+  }
 }
 
-.btn-primary {
-  @apply btn bg-brand-600 text-white hover:bg-brand-700;
+/* ── Motion (all guarded by prefers-reduced-motion below) ─────────────────── */
+
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
 }
 
-.btn-secondary {
-  @apply btn bg-slate-100 text-slate-700 hover:bg-slate-200;
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.btn-danger {
-  @apply btn bg-red-600 text-white hover:bg-red-700;
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.input {
-  @apply w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100;
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.96) translateY(6px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-.label {
-  @apply mb-1 block text-sm font-medium text-slate-700;
+@keyframes slide-in-left {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes grow-bar {
+  from { width: 0; }
+}
+
+.page-enter {
+  animation: page-enter 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Staggered entrance for list/grid children (capped at 12). */
+.stagger > * {
+  animation: rise-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.stagger > *:nth-child(1) { animation-delay: 0.03s; }
+.stagger > *:nth-child(2) { animation-delay: 0.07s; }
+.stagger > *:nth-child(3) { animation-delay: 0.11s; }
+.stagger > *:nth-child(4) { animation-delay: 0.15s; }
+.stagger > *:nth-child(5) { animation-delay: 0.19s; }
+.stagger > *:nth-child(6) { animation-delay: 0.23s; }
+.stagger > *:nth-child(7) { animation-delay: 0.27s; }
+.stagger > *:nth-child(8) { animation-delay: 0.31s; }
+.stagger > *:nth-child(9) { animation-delay: 0.35s; }
+.stagger > *:nth-child(10) { animation-delay: 0.39s; }
+.stagger > *:nth-child(11) { animation-delay: 0.43s; }
+.stagger > *:nth-child(12) { animation-delay: 0.47s; }
+
+.modal-overlay {
+  animation: fade-in 0.2s ease-out both;
+}
+
+.modal-panel {
+  animation: scale-in 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.drawer-panel {
+  animation: slide-in-left 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.bar-animate {
+  animation: grow-bar 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

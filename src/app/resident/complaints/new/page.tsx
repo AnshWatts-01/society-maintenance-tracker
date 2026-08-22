@@ -1,60 +1,38 @@
 "use client";
 
-import { useMemo, useState, type ChangeEvent, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch, ApiError } from "@/lib/apiClient";
 import { uploadFileDirect } from "@/lib/storage/clientUpload";
-import { COMPLAINT_CATEGORIES, CATEGORY_LABELS, MAX_PHOTO_SIZE_BYTES, ALLOWED_PHOTO_MIME_TYPES } from "@/lib/utils/constants";
+import { PhotoDropzone } from "@/components/PhotoDropzone";
+import { COMPLAINT_CATEGORIES, CATEGORY_LABELS } from "@/lib/utils/constants";
 import type { Complaint } from "@/types";
 
-type Stage = "idle" | "requesting-url" | "uploading" | "saving";
+type Stage = "idle" | "uploading" | "saving";
+
+const DESCRIPTION_MAX = 2000;
 
 export default function NewComplaintPage() {
   const router = useRouter();
   const [category, setCategory] = useState<(typeof COMPLAINT_CATEGORIES)[number]>("PLUMBING");
   const [description, setDescription] = useState("");
   const [file, setFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [stage, setStage] = useState<Stage>("idle");
 
-  // NEXT_PUBLIC_ vars are inlined at build time, so this is the same signal
-  // the server uses to decide whether uploads are available. Hiding the
-  // field beats offering it and failing at submit time.
-  const photoUploadsEnabled = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  // Storage backend, decided at build time: Supabase Storage (direct-to-cloud
+  // signed URLs) when configured, otherwise the zero-config first-party
+  // pipeline (POST /api/photos). Residents see the same upload either way.
+  const useCloudStorage = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL);
+
   const submitting = stage !== "idle";
   const stageLabel = useMemo(() => {
     switch (stage) {
-      case "requesting-url": return "Preparing upload…";
       case "uploading": return "Uploading photo…";
       case "saving": return "Saving complaint…";
-      default: return "Submit Complaint";
+      default: return "Submit complaint";
     }
   }, [stage]);
-
-  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
-    setError(null);
-    const selected = event.target.files?.[0] ?? null;
-    if (!selected) {
-      setFile(null);
-      setPreviewUrl(null);
-      return;
-    }
-
-    if (!ALLOWED_PHOTO_MIME_TYPES.includes(selected.type as (typeof ALLOWED_PHOTO_MIME_TYPES)[number])) {
-      setError("Only JPEG, PNG, or WebP photos are allowed.");
-      event.target.value = "";
-      return;
-    }
-    if (selected.size > MAX_PHOTO_SIZE_BYTES) {
-      setError(`Photo must be smaller than ${MAX_PHOTO_SIZE_BYTES / (1024 * 1024)} MB.`);
-      event.target.value = "";
-      return;
-    }
-
-    setFile(selected);
-    setPreviewUrl(URL.createObjectURL(selected));
-  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -62,27 +40,31 @@ export default function NewComplaintPage() {
 
     try {
       let photoPath: string | undefined;
+      let photoId: string | undefined;
 
       if (file) {
-        setStage("requesting-url");
-        const target = await apiFetch<{ uploadUrl: string; path: string; publicUrl: string }>(
-          "/api/uploads/sign-url",
-          {
+        setStage("uploading");
+        if (useCloudStorage) {
+          const target = await apiFetch<{ uploadUrl: string; path: string }>("/api/uploads/sign-url", {
             method: "POST",
             body: JSON.stringify({ fileName: file.name, mimeType: file.type, fileSizeBytes: file.size }),
-          }
-        );
-
-        setStage("uploading");
-        await uploadFileDirect(target.uploadUrl, file);
-        // Only the path is sent on; the server derives the display URL.
-        photoPath = target.path;
+          });
+          await uploadFileDirect(target.uploadUrl, file);
+          photoPath = target.path;
+        } else {
+          const formData = new FormData();
+          formData.append("file", file);
+          const response = await fetch("/api/photos", { method: "POST", body: formData });
+          const uploaded = await response.json();
+          if (!response.ok) throw new ApiError(uploaded?.error ?? "Upload failed", response.status);
+          photoId = uploaded.photoId;
+        }
       }
 
       setStage("saving");
       const { complaint } = await apiFetch<{ complaint: Complaint }>("/api/complaints", {
         method: "POST",
-        body: JSON.stringify({ category, description, photoPath }),
+        body: JSON.stringify({ category, description, photoPath, photoId }),
       });
 
       router.push(`/resident/complaints/${complaint.id}`);
@@ -95,11 +77,13 @@ export default function NewComplaintPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="text-2xl font-semibold text-slate-900">Raise a Complaint</h1>
-      <p className="mt-1 text-sm text-slate-500">Give as much detail as you can — it helps admin prioritize.</p>
+      <p className="eyebrow">New entry</p>
+      <h1 className="page-title mt-1">Raise a Complaint</h1>
+      <div className="title-rule" />
+      <p className="page-sub">The more detail you give, the faster the admin can act on it.</p>
 
-      <form onSubmit={handleSubmit} className="card mt-6 space-y-5 p-6">
-        {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      <form onSubmit={handleSubmit} className="card mt-7 space-y-6 p-6 sm:p-8">
+        {error && <p className="alert-error">{error}</p>}
 
         <div>
           <label className="label" htmlFor="category">Category</label>
@@ -107,6 +91,7 @@ export default function NewComplaintPage() {
             id="category"
             className="input"
             value={category}
+            disabled={submitting}
             onChange={(e) => setCategory(e.target.value as (typeof COMPLAINT_CATEGORIES)[number])}
           >
             {COMPLAINT_CATEGORIES.map((c) => (
@@ -116,33 +101,35 @@ export default function NewComplaintPage() {
         </div>
 
         <div>
-          <label className="label" htmlFor="description">Description</label>
+          <div className="flex items-baseline justify-between">
+            <label className="label" htmlFor="description">Description</label>
+            <span className="text-xs tabular-nums text-ink-mute">
+              {description.length}/{DESCRIPTION_MAX}
+            </span>
+          </div>
           <textarea
             id="description"
             required
             minLength={10}
-            maxLength={2000}
+            maxLength={DESCRIPTION_MAX}
             rows={5}
             className="input"
             placeholder="E.g. Kitchen tap has been leaking continuously since yesterday morning…"
             value={description}
+            disabled={submitting}
             onChange={(e) => setDescription(e.target.value)}
           />
         </div>
 
-        {photoUploadsEnabled && (
-          <div>
-            <label className="label" htmlFor="photo">Photo (optional)</label>
-            <input id="photo" type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFileChange} className="text-sm" />
-            <p className="mt-1 text-xs text-slate-400">JPEG, PNG, or WebP · up to 5 MB</p>
-            {previewUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={previewUrl} alt="Selected preview" className="mt-3 h-40 w-40 rounded-lg object-cover" />
-            )}
-          </div>
-        )}
+        <div>
+          <label className="label">Photo of the issue (optional)</label>
+          <PhotoDropzone file={file} onFileChange={setFile} onError={setError} disabled={submitting} />
+        </div>
 
-        <button type="submit" className="btn-primary w-full" disabled={submitting}>
+        <button type="submit" className="btn-primary w-full py-2.5" disabled={submitting}>
+          {submitting && (
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-paper/40 border-t-paper" />
+          )}
           {stageLabel}
         </button>
       </form>

@@ -45,20 +45,40 @@ export default function AdminComplaintDetailPage({ params }: { params: Promise<{
     }
   }
 
-  if (loading) return <p className="text-sm text-slate-500">Loading…</p>;
-  if (error && !complaint) {
-    return <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>;
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-3xl space-y-4">
+        <div className="skeleton h-5 w-44" />
+        <div className="skeleton h-56" />
+        <div className="skeleton h-40" />
+      </div>
+    );
   }
-  if (!complaint) return <p className="text-sm text-slate-500">Complaint not found.</p>;
+  if (error && !complaint) {
+    return <p className="alert-error mx-auto max-w-3xl">{error}</p>;
+  }
+  if (!complaint) {
+    return (
+      <div className="mx-auto max-w-3xl py-10 text-center">
+        <span className="mx-auto flex h-10 w-10 rotate-45 items-center justify-center rounded-lg border border-parch bg-white">
+          <span className="-rotate-45 text-gold-600">◆</span>
+        </span>
+        <p className="mt-4 text-sm text-ink-mute">This complaint could not be found.</p>
+        <Link href="/admin/complaints" className="link-quiet mt-3 inline-block">
+          Back to all complaints
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-3xl">
-      <Link href="/admin/complaints" className="text-sm text-brand-600 hover:underline">
+      <Link href="/admin/complaints" className="link-quiet">
         &larr; Back to all complaints
       </Link>
 
       {error && (
-        <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+        <p className="alert-error mt-4">{error}</p>
       )}
 
       <div className="card mt-4 p-6">
@@ -74,24 +94,24 @@ export default function AdminComplaintDetailPage({ params }: { params: Promise<{
             onClick={() => setShowModal(true)}
             disabled={complaint.status === "RESOLVED"}
           >
-            Update Status
+            Update status
           </button>
         </div>
 
-        <p className="mt-4 whitespace-pre-wrap text-slate-800">{complaint.description}</p>
+        <p className="mt-4 whitespace-pre-wrap text-ink">{complaint.description}</p>
 
         {complaint.photoUrl && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={complaint.photoUrl}
             alt="Complaint photo"
-            className="mt-4 max-h-80 rounded-lg border border-slate-200 object-cover"
+            className="mt-4 max-h-80 rounded-lg border-4 border-white object-cover shadow-card ring-1 ring-parch"
           />
         )}
 
-        <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-slate-500">
+        <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-ink-mute">
           <span>
-            Resident: <span className="font-medium text-slate-700">{complaint.resident.name}</span> (Flat {complaint.resident.flatNumber})
+            Resident: <span className="font-medium text-ink">{complaint.resident.name}</span> (Flat {complaint.resident.flatNumber})
           </span>
           <span>Raised {new Date(complaint.createdAt).toLocaleString()}</span>
         </div>
@@ -110,7 +130,7 @@ export default function AdminComplaintDetailPage({ params }: { params: Promise<{
       </div>
 
       <div className="card mt-6 p-6">
-        <h2 className="mb-4 text-lg font-semibold text-slate-900">Status History</h2>
+        <h2 className="mb-4 font-display text-lg text-ink">Status history</h2>
         <StatusTimeline history={complaint.history} />
       </div>
 

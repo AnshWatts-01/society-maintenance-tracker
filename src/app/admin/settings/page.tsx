@@ -38,15 +38,17 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="mx-auto max-w-lg">
-      <h1 className="text-2xl font-semibold text-slate-900">SLA Settings</h1>
-      <p className="mt-1 text-sm text-slate-500">
-        Complaints still open past this many days are automatically flagged overdue and pinned to the
-        top of the complaint queue.
+      <p className="eyebrow">Configuration</p>
+      <h1 className="page-title mt-1">SLA Settings</h1>
+      <div className="title-rule" />
+      <p className="page-sub">
+        Complaints still open past this many days are automatically flagged overdue and pinned to
+        the top of the complaint queue.
       </p>
 
       <form onSubmit={handleSubmit} className="card mt-6 space-y-4 p-6">
-        {message && <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{message}</p>}
-        {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        {message && <p className="alert-success">{message}</p>}
+        {error && <p className="alert-error">{error}</p>}
 
         <div>
           <label className="label" htmlFor="days">Overdue threshold (days)</label>
@@ -63,7 +65,7 @@ export default function AdminSettingsPage() {
         </div>
 
         <button type="submit" className="btn-primary" disabled={submitting}>
-          {submitting ? "Saving…" : "Save Threshold"}
+          {submitting ? "Saving…" : "Save changes"}
         </button>
       </form>
     </div>

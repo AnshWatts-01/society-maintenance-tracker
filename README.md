@@ -56,7 +56,7 @@ Four decisions define this codebase. Each is explained in depth in [`docs/SYSTEM
 
 **3. Hybrid SLA engine.** An indexed `isOverdue` boolean is reconciled by two idempotent set-based `updateMany` statements. That sweep runs *both* from an hourly cron (`/api/cron/sweep`) *and* inline before every admin read — so flags are correct even if cron is delayed, fails, or the threshold changed a second ago. Storing the flag (rather than computing it per query) is what makes `ORDER BY isOverdue DESC` index-backed, which is what makes overdue pinning cheap.
 
-**4. Direct-to-cloud uploads.** Photo bytes never touch the app server. The server validates MIME type and size, then mints a short-lived signed URL scoped to one object path namespaced under the uploading resident's own id. The client posts back only that *path* — never a URL: the server re-validates ownership and derives the display URL from its own template, so a resident cannot point a complaint photo at an arbitrary third-party host and turn every admin who opens the ticket into a tracking beacon.
+**4. Pluggable photo storage — uploads always work.** The zero-config default stores photos first-party: the browser downscales the image on-device (canvas, ≤1600 px), `POST /api/photos` validates the actual **magic bytes** (never the declared Content-Type), and the bytes live in a dedicated `ComplaintPhoto` table served back auth-gated (uploader or admin only) via `GET /api/photos/:id`. Linking to a complaint is claimed atomically in the creation transaction, so a photo id can never attach to two complaints or to someone else's upload. Configure Supabase Storage and uploads switch to direct-to-cloud signed URLs instead — bytes bypass the app server entirely. Either way the client posts back an opaque reference, never a URL, so a resident cannot point a complaint photo at a third-party host and turn every admin who opens the ticket into a tracking beacon.
 
 ### Dependency Discipline
 
@@ -193,9 +193,9 @@ Open **http://localhost:3000**.
 
 ### Optional: photo uploads & email
 
-Both features degrade gracefully — the app runs fully without them. To enable:
+Email degrades gracefully — the app runs fully without it. Photo uploads need nothing at all:
 
-- **Photos:** create a **public** bucket named `complaint-photos` in your Supabase project's Storage tab, then set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`.
+- **Photos work out of the box** — stored in Postgres, no configuration needed. To switch to direct-to-cloud uploads instead, create a **public** bucket named `complaint-photos` in your Supabase project's Storage tab, then set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`.
 - **Email:** sign up at [resend.com](https://resend.com), create an API key, then set `RESEND_API_KEY` and `EMAIL_FROM`. Without a verified domain, use `onboarding@resend.dev` as the sender for testing.
 
 ### Available Scripts
@@ -290,8 +290,19 @@ Copy from [`.env.example`](.env.example). **Never commit `.env`** — it is giti
 │ note           String?     │   │ IDX (status, attempts)     │
 │ createdAt                  │   └────────────────────────────┘
 │────────────────────────────│
-│ IDX (complaintId,createdAt)│
-└────────────────────────────┘
+│ IDX (complaintId,createdAt)│   ┌────────────────────────────┐
+└────────────────────────────┘   │       ComplaintPhoto       │
+                                 │  (first-party photo bytes) │
+                                 │────────────────────────────│
+                                 │ id             PK          │
+                                 │ uploaderId     FK → User   │
+                                 │ complaintId    UNIQUE?     │
+                                 │ mimeType / sizeBytes       │
+                                 │ data           Bytes       │
+                                 │ createdAt                  │
+                                 │────────────────────────────│
+                                 │ IDX (uploaderId)           │
+                                 └────────────────────────────┘
 ```
 
 ### Enums
@@ -366,7 +377,7 @@ Registration always assigns `RESIDENT`. Duplicate email → `409`.
 | Method | Endpoint | Auth | Description |
 |---|---|:---:|---|
 | `GET` | `/api/complaints` | 👤 | List complaints. **Residents see only their own**; admins see all, overdue-pinned. |
-| `POST` | `/api/complaints` | 👤 | Raise a complaint. Body: `{ category, description, photoPath? }`. |
+| `POST` | `/api/complaints` | 👤 | Raise a complaint. Body: `{ category, description, photoId? \| photoPath? }`. |
 | `GET` | `/api/complaints/:id` | 👤 | Detail + full status history. Residents restricted to their own (`403` otherwise). |
 | `PATCH` | `/api/complaints/:id/status` | 🛡️ | Transition status + append audit record + email resident. |
 | `PATCH` | `/api/complaints/:id/priority` | 🛡️ | Set priority. |
@@ -463,7 +474,9 @@ Side effects, in order: version-checked update → append `ComplaintStatusHistor
 
 | Method | Endpoint | Auth | Body | Notes |
 |---|---|:---:|---|---|
-| `POST` | `/api/uploads/sign-url` | 👤 | `{ fileName, mimeType, fileSizeBytes }` | Validates MIME allowlist + 5 MB cap, returns `{ uploadUrl, path, publicUrl }`. `422` if rejected, `503` if storage is not configured. |
+| `POST` | `/api/photos` | 👤 | multipart `file` field | Default storage backend. Magic-byte MIME validation + 5 MB cap, returns `{ photoId, url }`. `422` if rejected. |
+| `GET` | `/api/photos/:id` | 👤 | — | Serves the photo bytes. Uploader or admin only — others get `404`. |
+| `POST` | `/api/uploads/sign-url` | 👤 | `{ fileName, mimeType, fileSizeBytes }` | Cloud mode only. Validates MIME allowlist + 5 MB cap, returns `{ uploadUrl, path, publicUrl }`. `422` if rejected, `503` if storage is not configured. |
 | `GET` | `/api/cron/sweep` | 🔑 | — | `Authorization: Bearer $CRON_SECRET`. Resweeps SLA flags and retries failed emails. |
 
 ### Error Format
@@ -540,7 +553,7 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://<your-app>.vercel.app/api/c
 ### Step 7 — Post-deploy checklist
 
 - [ ] `/login` loads and the seeded admin can sign in.
-- [ ] A resident can raise a complaint (with a photo, if storage is configured).
+- [ ] A resident can raise a complaint with a photo (works with zero storage config).
 - [ ] An admin status change appears in the resident's timeline **and** triggers an email.
 - [ ] Overdue complaints are pinned to the top of the admin queue.
 - [ ] Changing the SLA threshold in **Settings** re-flags complaints on the next dashboard load.

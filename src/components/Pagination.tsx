@@ -10,16 +10,16 @@ export function Pagination({
   if (totalPages <= 1) return null;
 
   return (
-    <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3">
+    <div className="flex items-center justify-between border-t border-parch px-4 py-3">
       <button
         type="button"
         className="btn-secondary"
         disabled={page <= 1}
         onClick={() => onPageChange(page - 1)}
       >
-        Previous
+        &larr; Previous
       </button>
-      <span className="text-sm text-slate-500">
+      <span className="text-sm tabular-nums text-ink-mute">
         Page {page} of {totalPages}
       </span>
       <button
@@ -28,7 +28,7 @@ export function Pagination({
         disabled={page >= totalPages}
         onClick={() => onPageChange(page + 1)}
       >
-        Next
+        Next &rarr;
       </button>
     </div>
   );

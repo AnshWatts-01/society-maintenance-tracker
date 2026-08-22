@@ -38,13 +38,15 @@ export default function ResidentDashboardPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">My Complaints</h1>
-          <p className="text-sm text-slate-500">Track every complaint you have raised and its full history.</p>
+          <p className="eyebrow">Resident portal</p>
+          <h1 className="page-title mt-1">My Complaints</h1>
+          <div className="title-rule" />
+          <p className="page-sub">Track every complaint you have raised and its full history.</p>
         </div>
         <Link href="/resident/complaints/new" className="btn-primary">
-          + Raise a Complaint
+          Raise a complaint
         </Link>
       </div>
 
@@ -71,30 +73,42 @@ export default function ResidentDashboardPage() {
         </select>
       </div>
 
-      {error && (
-        <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
-      )}
+      {error && <p className="alert-error mb-4">{error}</p>}
 
       <div className="card overflow-hidden">
-        {loading && <p className="p-6 text-sm text-slate-500">Loading…</p>}
+        {loading && (
+          <div className="space-y-3 p-4">
+            <div className="skeleton h-20" />
+            <div className="skeleton h-20" />
+            <div className="skeleton h-20" />
+          </div>
+        )}
         {!loading && result?.items.length === 0 && (
-          <p className="p-6 text-sm text-slate-500">No complaints found. Raise one to get started.</p>
+          <div className="p-10 text-center">
+            <span className="mx-auto flex h-10 w-10 rotate-45 items-center justify-center rounded-lg border border-parch bg-white">
+              <span className="-rotate-45 text-gold-600">◆</span>
+            </span>
+            <p className="mt-4 text-sm text-ink-mute">No complaints found.</p>
+            <Link href="/resident/complaints/new" className="link-quiet mt-3 inline-block">
+              Raise a complaint
+            </Link>
+          </div>
         )}
         {!loading && result && result.items.length > 0 && (
-          <ul className="divide-y divide-slate-100">
+          <ul className="stagger divide-y divide-parch">
             {result.items.map((complaint) => (
               <li key={complaint.id}>
                 <Link
                   href={`/resident/complaints/${complaint.id}`}
-                  className="flex flex-col gap-2 p-4 hover:bg-slate-50 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-2 border-l-2 border-transparent p-4 transition-colors hover:border-gold-500 hover:bg-paper sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <CategoryBadge category={complaint.category} />
                       {complaint.isOverdue && <OverdueBadge />}
                     </div>
-                    <p className="mt-1.5 line-clamp-1 text-sm text-slate-700">{complaint.description}</p>
-                    <p className="mt-1 text-xs text-slate-400">
+                    <p className="mt-1.5 line-clamp-1 text-sm text-ink-soft">{complaint.description}</p>
+                    <p className="mt-1 text-xs text-ink-mute">
                       Raised {new Date(complaint.createdAt).toLocaleDateString()}
                     </p>
                   </div>

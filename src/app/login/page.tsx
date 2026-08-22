@@ -48,50 +48,57 @@ function LoginForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-      <div className="w-full max-w-sm">
+    <div className="flex min-h-screen items-center justify-center px-4">
+      <div className="page-enter w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-semibold text-slate-900">Society Maintenance Tracker</h1>
-          <p className="mt-1 text-sm text-slate-500">Sign in to raise or manage complaints</p>
+          <span className="relative inline-flex h-11 w-11 rotate-45 items-center justify-center rounded-[7px] border border-gold-500 bg-ink">
+            <span className="-rotate-45 font-display text-lg tracking-wider text-gold-400">S</span>
+          </span>
+          <h1 className="mt-4 font-display text-2xl text-ink">Society Tracker</h1>
+          <p className="eyebrow mt-1.5">Estate Register</p>
+          <p className="mt-3 text-sm text-ink-mute">Sign in to raise or track complaints.</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="card space-y-4 p-6">
-          {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        <form onSubmit={handleSubmit} className="card relative p-7 sm:p-8">
+          <span className="absolute inset-x-7 top-0 h-px bg-gradient-to-r from-gold-600 via-gold-300 to-transparent" />
+          <div className="space-y-4">
+            {error && <p className="alert-error">{error}</p>}
 
-          <div>
-            <label className="label" htmlFor="email">Email</label>
-            <input
-              id="email"
-              type="email"
-              required
-              className="input"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-            />
+            <div>
+              <label className="label" htmlFor="email">Email</label>
+              <input
+                id="email"
+                type="email"
+                required
+                className="input"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+              />
+            </div>
+
+            <div>
+              <label className="label" htmlFor="password">Password</label>
+              <input
+                id="password"
+                type="password"
+                required
+                className="input"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+              />
+            </div>
+
+            <button type="submit" className="btn-primary w-full" disabled={submitting}>
+              {submitting ? "Signing in…" : "Sign in"}
+            </button>
           </div>
-
-          <div>
-            <label className="label" htmlFor="password">Password</label>
-            <input
-              id="password"
-              type="password"
-              required
-              className="input"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-            />
-          </div>
-
-          <button type="submit" className="btn-primary w-full" disabled={submitting}>
-            {submitting ? "Signing in…" : "Sign in"}
-          </button>
         </form>
 
-        <p className="mt-4 text-center text-sm text-slate-500">
+        <p className="mt-4 text-center text-sm text-ink-mute">
           New resident?{" "}
-          <a href="/register" className="font-medium text-brand-600 hover:underline">
+          <a href="/register" className="link-quiet">
             Create an account
           </a>
         </p>

@@ -71,8 +71,10 @@ export default function AdminComplaintsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-slate-900">Complaint Management</h1>
-      <p className="mt-1 text-sm text-slate-500">Overdue complaints are automatically pinned to the top.</p>
+      <p className="eyebrow">Command center</p>
+      <h1 className="page-title mt-1">Complaint Management</h1>
+      <div className="title-rule" />
+      <p className="page-sub">Overdue complaints are automatically pinned to the top.</p>
 
       <div className="card mt-6 flex flex-wrap gap-3 p-4">
         <select className="input max-w-[160px]" value={filters.status} onChange={(e) => updateFilter("status", e.target.value)}>
@@ -92,41 +94,62 @@ export default function AdminComplaintsPage() {
       </div>
 
       {error && (
-        <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+        <p className="alert-error mt-4">{error}</p>
       )}
 
       <div className="card mt-6 overflow-x-auto">
-        {loading && <p className="p-6 text-sm text-slate-500">Loading…</p>}
+        {loading && (
+          <div className="space-y-3 p-6">
+            <div className="skeleton h-10" />
+            <div className="skeleton h-10" />
+            <div className="skeleton h-10" />
+          </div>
+        )}
         {!loading && result?.items.length === 0 && (
-          <p className="p-6 text-sm text-slate-500">No complaints match these filters.</p>
+          <div className="p-10 text-center">
+            <span className="mx-auto flex h-10 w-10 rotate-45 items-center justify-center rounded-lg border border-parch bg-white">
+              <span className="-rotate-45 text-gold-600">◆</span>
+            </span>
+            <p className="mt-4 text-sm text-ink-mute">No complaints match these filters.</p>
+          </div>
         )}
         {!loading && result && result.items.length > 0 && (
           <table className="w-full min-w-[900px] text-left text-sm">
-            <thead className="border-b border-slate-100 text-xs uppercase text-slate-400">
+            <thead className="border-b border-parch">
               <tr>
-                <th className="px-4 py-3">Complaint</th>
-                <th className="px-4 py-3">Resident</th>
-                <th className="px-4 py-3">Priority</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Raised</th>
+                <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-mute">Complaint</th>
+                <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-mute">Resident</th>
+                <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-mute">Priority</th>
+                <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-mute">Status</th>
+                <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-mute">Raised</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-parch">
               {result.items.map((complaint) => (
-                <tr key={complaint.id} className={complaint.isOverdue ? "bg-red-50/50" : undefined}>
+                <tr
+                  key={complaint.id}
+                  className={
+                    complaint.isOverdue
+                      ? "border-l-2 border-l-burgundy-600 bg-burgundy-50/40 transition-colors hover:bg-paper"
+                      : "border-l-2 border-l-transparent transition-colors hover:border-l-gold-500 hover:bg-paper"
+                  }
+                >
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <CategoryBadge category={complaint.category} />
                       {complaint.isOverdue && <OverdueBadge />}
                     </div>
-                    <Link href={`/admin/complaints/${complaint.id}`} className="mt-1 block line-clamp-1 max-w-xs text-slate-700 hover:underline">
+                    <Link
+                      href={`/admin/complaints/${complaint.id}`}
+                      className="mt-1 block line-clamp-1 max-w-xs text-ink transition-colors hover:text-royal-700 hover:underline"
+                    >
                       {complaint.description}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-slate-600">
+                  <td className="px-4 py-3 text-ink-mute">
                     {complaint.resident?.name}
-                    <div className="text-xs text-slate-400">Flat {complaint.resident?.flatNumber}</div>
+                    <div className="text-xs text-ink-mute">Flat {complaint.resident?.flatNumber}</div>
                   </td>
                   <td className="px-4 py-3">
                     <select
@@ -139,7 +162,7 @@ export default function AdminComplaintsPage() {
                     </select>
                   </td>
                   <td className="px-4 py-3"><StatusBadge status={complaint.status} /></td>
-                  <td className="px-4 py-3 text-xs text-slate-400">
+                  <td className="px-4 py-3 text-xs text-ink-mute">
                     {new Date(complaint.createdAt).toLocaleDateString()}
                   </td>
                   <td className="px-4 py-3 text-right">
@@ -149,7 +172,7 @@ export default function AdminComplaintsPage() {
                       onClick={() => setModalComplaint(complaint)}
                       disabled={complaint.status === "RESOLVED"}
                     >
-                      Update Status
+                      Update status
                     </button>
                   </td>
                 </tr>

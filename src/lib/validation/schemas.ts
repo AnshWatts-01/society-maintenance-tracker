@@ -35,6 +35,9 @@ export const createComplaintSchema = z.object({
   // arbitrary third-party origin (which would turn every admin viewing the
   // ticket into a tracking beacon for whoever controls that host).
   photoPath: z.string().max(500).optional(),
+  // First-party alternative to photoPath: the id returned by POST /api/photos.
+  // Ownership and single-use linking are enforced in the route handler.
+  photoId: z.string().cuid().optional(),
 });
 export type CreateComplaintInput = z.infer<typeof createComplaintSchema>;
 

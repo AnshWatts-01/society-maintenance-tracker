@@ -2,6 +2,7 @@ import { after } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import type { ComplaintCategory, ComplaintStatus, PriorityLevel } from "@prisma/client";
 import { dispatchStatusChangeEmail } from "@/lib/email/dispatch";
+import { PhotoValidationError } from "@/lib/services/photoService";
 
 const RESIDENT_SELECT = {
   resident: { select: { id: true, name: true, flatNumber: true, email: true } },
@@ -36,6 +37,7 @@ export async function createComplaint(params: {
   description: string;
   photoUrl?: string;
   photoPath?: string;
+  photoId?: string;
 }) {
   return prisma.$transaction(async (tx) => {
     const complaint = await tx.complaint.create({
@@ -47,6 +49,20 @@ export async function createComplaint(params: {
         photoPath: params.photoPath,
       },
     });
+
+    // First-party photo: claim it atomically inside this transaction. The
+    // WHERE clause enforces uploader ownership AND single-use in one shot —
+    // a photo id can never be attached to two complaints or to someone
+    // else's upload. A failed claim rolls the whole creation back.
+    if (params.photoId) {
+      const claimed = await tx.complaintPhoto.updateMany({
+        where: { id: params.photoId, uploaderId: params.residentId, complaintId: null },
+        data: { complaintId: complaint.id },
+      });
+      if (claimed.count === 0) {
+        throw new PhotoValidationError("Invalid photo reference");
+      }
+    }
 
     // The creation itself is the first entry in the audit ledger, recorded
     // with no previousStatus so the timeline reads "Raised" rather than a

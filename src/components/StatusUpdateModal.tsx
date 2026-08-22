@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { apiFetch, ApiError } from "@/lib/apiClient";
 import { STATUS_LABELS } from "@/lib/utils/constants";
 import type { Complaint, ComplaintStatus } from "@/types";
@@ -26,6 +26,14 @@ export function StatusUpdateModal({
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
   async function handleSubmit() {
     if (!newStatus) return;
     setSubmitting(true);
@@ -45,28 +53,46 @@ export function StatusUpdateModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-        <h2 className="text-lg font-semibold text-slate-900">Update Complaint Status</h2>
-        <p className="mt-1 text-sm text-slate-500">Currently: {STATUS_LABELS[complaint.status]}</p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+      <button
+        type="button"
+        aria-label="Close dialog"
+        className="modal-overlay absolute inset-0 bg-ink/50"
+        onClick={onClose}
+      />
+      <div className="modal-panel card relative w-full max-w-md p-6 shadow-modal">
+        <span className="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-gold-600 via-gold-300 to-transparent" />
+        <h2 className="font-display text-xl tracking-wide text-ink">Update Status</h2>
+        <p className="mt-1 text-sm text-ink-mute">Currently: {STATUS_LABELS[complaint.status]}</p>
 
-        {error && <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        {error && <p className="alert-error mt-3">{error}</p>}
 
         {options.length === 0 ? (
-          <p className="mt-4 text-sm text-slate-500">This complaint is resolved and closed.</p>
+          <p className="mt-4 text-sm text-ink-mute">This complaint is resolved and closed.</p>
         ) : (
           <div className="mt-4 space-y-4">
             <div>
-              <label className="label">New status</label>
-              <select className="input" value={newStatus} onChange={(e) => setNewStatus(e.target.value as ComplaintStatus)}>
+              <label className="label" htmlFor="modal-status">New status</label>
+              <select
+                id="modal-status"
+                className="input"
+                value={newStatus}
+                onChange={(e) => setNewStatus(e.target.value as ComplaintStatus)}
+              >
                 {options.map((status) => (
                   <option key={status} value={status}>{STATUS_LABELS[status]}</option>
                 ))}
               </select>
+              {newStatus === "RESOLVED" && (
+                <p className="mt-1.5 text-xs text-burgundy-600">
+                  Resolving closes this complaint permanently — it cannot be reopened.
+                </p>
+              )}
             </div>
             <div>
-              <label className="label">Note (optional)</label>
+              <label className="label" htmlFor="modal-note">Note for the resident (optional)</label>
               <textarea
+                id="modal-note"
                 className="input"
                 rows={3}
                 maxLength={1000}
@@ -82,7 +108,7 @@ export function StatusUpdateModal({
           <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
           {options.length > 0 && (
             <button type="button" className="btn-primary" onClick={handleSubmit} disabled={submitting}>
-              {submitting ? "Saving…" : "Save"}
+              {submitting ? "Saving…" : "Save update"}
             </button>
           )}
         </div>

@@ -142,6 +142,24 @@ model Notice {
   @@index([isImportant, createdAt])
 }
 
+// First-party photo storage: the zero-configuration default backend for
+// complaint photos. Bytes live in their own table so complaint list/detail
+// queries never accidentally drag megabytes of image data; the app serves
+// them auth-gated via GET /api/photos/[id]. When Supabase Storage env vars
+// are configured, the direct-to-cloud signed-URL pipeline is used instead
+// and this table simply stays empty. See docs/SYSTEM_DESIGN.md §3.
+model ComplaintPhoto {
+  id          String   @id @default(cuid())
+  uploaderId  String
+  complaintId String?  @unique
+  mimeType    String
+  sizeBytes   Int
+  data        Bytes
+  createdAt   DateTime @default(now())
+
+  @@index([uploaderId])
+}
+
 // Dynamic system configuration (e.g. the overdue SLA threshold) without a
 // redeploy. Simple key/value store, deliberately not over-modeled.
 model SystemSetting {

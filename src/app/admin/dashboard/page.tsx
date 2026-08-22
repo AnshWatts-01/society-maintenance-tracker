@@ -11,11 +11,11 @@ function BreakdownBar({ label, count, total, color }: { label: string; count: nu
   return (
     <div>
       <div className="flex items-center justify-between text-sm">
-        <span className="text-slate-600">{label}</span>
-        <span className="font-medium text-slate-900">{count}</span>
+        <span className="text-ink-mute">{label}</span>
+        <span className="font-semibold tabular-nums text-ink">{count}</span>
       </div>
-      <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-slate-100">
-        <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
+      <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-paper-deep">
+        <div className={`bar-animate h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
       </div>
     </div>
   );
@@ -46,34 +46,50 @@ export default function AdminDashboardPage() {
   }, []);
 
   if (error && !analytics) {
-    return <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>;
+    return <p className="alert-error">{error}</p>;
   }
-  if (!analytics) return <p className="text-sm text-slate-500">Loading dashboard…</p>;
+  if (!analytics)
+    return (
+      <div>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div className="skeleton h-28" />
+          <div className="skeleton h-28" />
+          <div className="skeleton h-28" />
+          <div className="skeleton h-28" />
+        </div>
+        <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          <div className="skeleton h-64" />
+          <div className="skeleton h-64" />
+        </div>
+      </div>
+    );
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-slate-900">Executive Dashboard</h1>
-      <p className="mt-1 text-sm text-slate-500">Live snapshot of society maintenance activity.</p>
+      <p className="eyebrow">Command center</p>
+      <h1 className="page-title mt-1">Executive Dashboard</h1>
+      <div className="title-rule" />
+      <p className="page-sub">Live snapshot of society maintenance activity.</p>
 
-      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="stagger mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <StatCard label="Total Complaints" value={analytics.totalComplaints} />
-        <StatCard label="Open" value={analytics.byStatus.OPEN} accent="text-amber-600" />
-        <StatCard label="In Progress" value={analytics.byStatus.IN_PROGRESS} accent="text-blue-600" />
-        <StatCard label="Overdue" value={analytics.overdueCount} accent="text-red-600" />
+        <StatCard label="Open" value={analytics.byStatus.OPEN} accent="text-amberEstate-600" />
+        <StatCard label="In Progress" value={analytics.byStatus.IN_PROGRESS} accent="text-royal-600" />
+        <StatCard label="Overdue" value={analytics.overdueCount} accent="text-burgundy-600" />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <div className="card p-6">
-          <h2 className="mb-4 text-base font-semibold text-slate-900">By Status</h2>
+          <h2 className="mb-4 font-display text-lg tracking-wide text-ink">By Status</h2>
           <div className="space-y-4">
-            <BreakdownBar label={STATUS_LABELS.OPEN} count={analytics.byStatus.OPEN} total={analytics.totalComplaints} color="bg-amber-500" />
-            <BreakdownBar label={STATUS_LABELS.IN_PROGRESS} count={analytics.byStatus.IN_PROGRESS} total={analytics.totalComplaints} color="bg-blue-500" />
-            <BreakdownBar label={STATUS_LABELS.RESOLVED} count={analytics.byStatus.RESOLVED} total={analytics.totalComplaints} color="bg-emerald-500" />
+            <BreakdownBar label={STATUS_LABELS.OPEN} count={analytics.byStatus.OPEN} total={analytics.totalComplaints} color="bg-amberEstate-600" />
+            <BreakdownBar label={STATUS_LABELS.IN_PROGRESS} count={analytics.byStatus.IN_PROGRESS} total={analytics.totalComplaints} color="bg-royal-600" />
+            <BreakdownBar label={STATUS_LABELS.RESOLVED} count={analytics.byStatus.RESOLVED} total={analytics.totalComplaints} color="bg-moss-600" />
           </div>
         </div>
 
         <div className="card p-6">
-          <h2 className="mb-4 text-base font-semibold text-slate-900">By Category</h2>
+          <h2 className="mb-4 font-display text-lg tracking-wide text-ink">By Category</h2>
           <div className="space-y-4">
             {(Object.keys(analytics.byCategory) as Array<keyof typeof analytics.byCategory>).map((category) => (
               <BreakdownBar
@@ -81,7 +97,7 @@ export default function AdminDashboardPage() {
                 label={CATEGORY_LABELS[category]}
                 count={analytics.byCategory[category]}
                 total={analytics.totalComplaints}
-                color="bg-brand-500"
+                color="bg-gold-600"
               />
             ))}
           </div>
