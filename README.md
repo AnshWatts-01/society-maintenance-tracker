@@ -1,5 +1,9 @@
 # 🏢 Society Maintenance Tracker
 
+[![Live Demo](https://img.shields.io/badge/demo-live-2F3E8F)](https://society-maintenance-tracker-ansh01.vercel.app)
+[![Next.js 15](https://img.shields.io/badge/Next.js-15-black)](https://nextjs.org)
+[![Prisma](https://img.shields.io/badge/Prisma-PostgreSQL-2D3748)](https://www.prisma.io)
+
 A production-grade complaint management platform for apartment societies. Residents raise maintenance complaints with photos and track their full audit history; admins triage them through a governed status lifecycle with priorities, SLA-driven overdue detection, a pinned notice board, and automated email notifications.
 
 > **System design write-up:** [`docs/SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md) (800-word limit — covers the status history model, overdue detection, photo handling, and notification flow.)
